@@ -109,13 +109,13 @@ the timings measure sorting, not `malloc`.
 **Correctness.** `./hybrid_sort verify` sorts random arrays for every $n = 1\ldots300$ and every
 $S = 1, 4, 7, 10, 13, 16, 19$, and asserts the output is non-decreasing; every experiment run also
 re-checks sortedness before its result is recorded. All checks pass. The Java version uses the same
-xorshift64\* generator with the same seeds and reproduces the C comparison counts bit-for-bit, which
+xorshift64 generator with the same seeds and reproduces the C comparison counts bit-for-bit, which
 is an independent check on the counting logic.
 
 ## (b) Input data
 
 Datasets are 13 sizes from 1,000 to 10,000,000 (1k, 2k, 5k, 10k, …, 5M, 10M), each filled with
-integers drawn uniformly from **[1, 10,000,000]** by a xorshift64\* generator with a fixed seed, so
+integers drawn uniformly from **[1, 10,000,000]** by a xorshift64 generator with a fixed seed, so
 every run is reproducible and both algorithms see byte-identical input. Data generation and the
 sortedness check are both outside the timed region. Small inputs are repeated (up to 50×) and the
 **times** averaged so that clock resolution does not dominate.
@@ -264,7 +264,10 @@ in $1$ of the $i+1$ cases, where that test never happens.
 
 $$\sum_{i=1}^{m-1}\frac{i}{2}=\frac{m(m-1)}{4},\qquad
 \sum_{i=1}^{m-1}1=m-1,$$
-$$importantly, \sum_{i=1}^{m-1}\frac{1}{i+1}=\frac12+\frac13+\dots+\frac1m=H_m-1.$$
+
+and the one that matters here — the discounts:
+
+$$\sum_{i=1}^{m-1}\frac{1}{i+1}=\frac12+\frac13+\dots+\frac1m=H_m-1.$$
 
 $$C_{\text{ins}}(m)=\frac{m(m-1)}{4}+(m-1)-(H_m-1)=\boxed{\frac{m(m+3)}{4}-H_m}\;=\;\Theta(m^2)$$
 
@@ -272,9 +275,9 @@ $$C_{\text{ins}}(m)=\frac{m(m-1)}{4}+(m-1)-(H_m-1)=\boxed{\frac{m(m+3)}{4}-H_m}\
 exactly one landing spot (the new minimum) that saves a comparison. It stays small next to the
 $m^2/4$ term: $H_{10}=2.93$ against 25, and $H_{40}=4.28$ against 400.
 
-**Sanity check at $m=4$.** The three steps average $1.0000 + 1.6667 + 2.2500 = 4.9167$, and the
-closed form gives $\tfrac{4\cdot7}{4}-H_4 = 7-2.0833 = 4.9167$. The measured value in
-`leafstats.csv` is $4.9146$.
+**Sanity check at $m=4$.** The three insertion steps cost $1.0000$, $1.6667$ and $2.2500$ on
+average, totalling $4.9167$, and the closed form gives $\tfrac{4\cdot7}{4}-H_4 = 7-2.0833 = 4.9167$.
+The measured value in `leafstats.csv` is $4.9146$.
 
 Worst case is $\tfrac{m(m-1)}{2}$ (a reversed array — every insertion shifts the whole prefix) and
 best case is $m-1$ (already sorted — every insertion stops on its first comparison).
@@ -502,9 +505,9 @@ is safe.)
 
 **Fig 6a** plots $f(m)$ in real units — key comparisons per element at $n=10^6$. The curve rises
 monotonically from $m=1$; there is no dip anywhere. The black points are the exact recurrence —
-caculated by `model.py`, not measured from the actual sort — evaluated at the true average leaf size $n/(\text{leaves})$. They track the
-curve's shape and confirm the conclusion, while sitting about $0.8$ above it at $m=1$, which is the
-closed form's known over-discount at small $m$ (§T5).
+calculated by `model.py`, not measured from an actual sort — evaluated at the true average leaf size
+$n/(\text{leaves})$. They track the curve's shape and confirm the conclusion, while sitting about
+$0.8$ above it at $m=1$, which is the closed form's known over-discount at small $m$ (§T5).
 
 ![fig6b](fig6b_slope_vs_leafsize.png)
 
@@ -618,14 +621,12 @@ algorithm.
 then declines slowly across a wide, shallow floor before turning back up past $S\approx200$. The
 minima land at $S=66,84,141,88,142$ for $n=10^3\ldots10^7$ — an order of magnitude above the
 thresholds real implementations use, and scattered *within* the floor rather than pinned to one
-value. The
-two figures therefore **disagree about what $S$ should be**, and that disagreement is the central
-finding of the project. The explanation is that a key comparison is not the unit of work that
+value. The two figures therefore **disagree about what $S$ should be**, and that disagreement is the
+central finding of the project. The explanation is that a key comparison is not the unit of work that
 dominates runtime — see §(d).
 
-Sweeping five sizes also exposes something the earlier three-size version hid: **the hybrid's
-relative advantage shrinks as $n$ grows.** The floor sits at 0.656 of the $S=1$ time at $n=10^3$
-but only 0.864 at $n=10^7$:
+Across the five sizes a second trend shows up: **the hybrid's relative advantage shrinks as $n$
+grows.** The floor sits at 0.656 of the $S=1$ time at $n=10^3$ but only 0.864 at $n=10^7$:
 
 | $n$ | $10^3$ | $10^4$ | $10^5$ | $10^6$ | $10^7$ |
 |---|---:|---:|---:|---:|---:|
@@ -646,10 +647,10 @@ meaningful; its individual points are not.
 Sweeps over $S = 1\ldots512$ for $n = 10^3,10^4,10^5,10^6,10^7$ (`exp_c.csv`; refined at $10^7$ with
 5 trials per point in `exp_e.csv`, **fig 3a** and **fig 3b**).
 
-> **Why the sweep runs to 512.** An earlier version of this experiment stopped at $S=128$ and found
-> its "optimum" sitting on that boundary — which is not a measurement of an optimum at all, only of
-> where the search stopped. The range was extended until the time curve turned back up on both
-> sides, so the minimum reported below is genuinely interior.
+> **Why the sweep runs to 512.** The range is chosen so the minimum is *interior* — the sweep
+> continues until the time curve has clearly turned back up. At $S=512$ it sits between $8.3\,\%$
+> ($n=10^7$) and $63.6\,\%$ ($n=10^3$) above that size's floor. A sweep whose fastest point is its
+> own last point has measured where the search stopped, not where the optimum is.
 
 "Best" below always means *within that row* — the $S$ minimising that quantity at that one input
 size. The fourth column is a time **reduction** (negative = faster than pure merge sort).

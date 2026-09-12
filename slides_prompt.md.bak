@@ -1,0 +1,445 @@
+# Prompt for Claude Design — SC2001 Project 1 slide deck
+
+> **How to use:** run Claude Design from inside `c:\Users\thzac\Documents\sc2001\lab1`
+> (so it can read the ten `fig*.png` files and `report.md`), then paste everything below the line.
+
+---
+
+Create a presentation deck — 16:9 artboards, 1920×1080 — for a university algorithms
+course project. This is an assessed 10 minute presentation for SC2001 (Algorithm Design
+and Analysis). The full write-up is in `report.md` in this folder; use it as the source of
+truth for anything not spelled out below.
+
+## Grading rubric this deck is judged against
+
+- **Correctness — algorithm & implementation: 40 %.** The deck must show the actual algorithm
+  and prove it works. Give pseudocode real estate; state the key-comparison counting
+  convention explicitly; show the correctness evidence.
+- **Analysis — theoretical & empirical: 40 %.** Both halves must be visible. Derived formulas
+  *and* measured data, with the two shown agreeing.
+- **Presentation & clarity of slides: 20 %.** This is your design brief.
+
+A course constraint worth honouring: **code must be readable by someone unfamiliar with the
+language.** Any code on a slide should be language-neutral pseudocode with plain-English
+annotations — not raw C.
+
+## Pacing — 10 minutes
+
+19 content slides is more than 10 minutes allows (~30 s each). Build all of them, but mark the
+following as **optional** in the speaker notes so they can be skipped live and kept for Q&A:
+**4** (counting convention — the key points survive on slide 7), **18** (why libraries use 16–64),
+and either **2** or **6**. That leaves a ~15-slide core at ~40 s each, which is realistic.
+Slides **10, 11, 14 and 16** carry the most marks (the corrected optimum, the base-case crossover,
+the S recommendation, and the memory-hierarchy explanation) — never cut those for time.
+
+## Design direction
+
+- Clean academic style, projector-legible: assume the back row is 12 m away. Body text no
+  smaller than 28 px at 1920 width; slide titles 56–72 px. Never fill a slide with prose —
+  target under ~40 words of body copy per slide.
+- **One idea per slide.** Every analysis slide ends with a single bold one-line takeaway in a
+  tinted callout strip along the bottom.
+- **Match the palette to the embedded figures**, so the plots look native rather than pasted in.
+  The figures use: hybrid = blue `#1f77b4`, original merge sort = red `#d62728`, insertion sort
+  = orange `#ff7f0e`. Use blue as the primary accent and red as the contrast accent; keep the
+  background near-white (`#fbfbfa` or similar) with near-black text.
+- Number every slide, and carry a thin progress indicator or section label so the audience
+  knows where they are in (a) → (b) → theory → (c) → (d) → conclusions.
+- Formulas are the star of several slides: set display equations large and centred, with the
+  meaning of each symbol labelled *beside* the term it belongs to (leader lines or coloured
+  annotations), not in a separate legend. Do not use raw LaTeX source as text — render the
+  math as styled HTML/SVG.
+
+## Figures — embed, don't link
+
+Read each one and embed it as a **base64 `data:` URI**; externally-referenced images will not
+load in the published artifact.
+
+Ten PNGs, each a single uncluttered graph (roughly 4:3). They come in pairs — the two halves of
+each analysis question — so pair them side by side on one slide, or split across two slides if the
+point deserves the room.
+
+| File | Shows | Best use |
+|---|---|---|
+| `fig1a_comparisons_vs_n.png` | absolute counts, log–log | (c)(i), left of the pair |
+| `fig1b_comparisons_per_element.png` | same data ÷ n — the sharper Θ(n log n) test | (c)(i), right of the pair |
+| `fig2a_comparisons_vs_S.png` | the comparison staircase, ÷ each curve's S=1 | (c)(ii), left of the pair |
+| `fig2b_time_vs_S.png` | CPU time over the same runs | (c)(ii), right of the pair |
+| `fig3a_comparison_cost_vs_S.png` | comparison cost, ÷ each n's own minimum | (c)(iii), left of the pair |
+| `fig3b_time_vs_S_optimal.png` | the CPU-time U, ★ = each n's optimum | (c)(iii), right — **the money figure** |
+| `fig4_part_d.png` | two bar panels | left half of the (d) slide, table on the right |
+| `fig5_base_case.png` | insertion vs merge on small m | right half of the base-case slide, table left |
+| `fig6a_cost_vs_leafsize.png` | closed form f(m) vs the exact recurrence | slide 10, optional cross-check |
+| `fig6b_slope_vs_leafsize.png` | f'(m) staying above zero | slide 10, optional cross-check |
+
+When a figure is the point of a slide, give it 60–70 % of the area and let the text be a short
+"what to look at" annotation. Where useful, overlay a small circled callout directly on the
+figure pointing at the feature being discussed.
+
+## Hard content rules
+
+**Every number below is verified against the raw data — reproduce them exactly and invent
+nothing.** If you need a figure that isn't here, omit the claim rather than estimating. Keep
+units, signs and significant figures as written.
+
+---
+
+# Slide-by-slide content
+
+### 1 — Title
+SC2001 Algorithm Design and Analysis · Project 1
+**Integration of Merge Sort and Insertion Sort**
+Subtitle: *When doing more comparisons makes you faster*
+Space for team member names.
+
+### 2 — The idea
+Merge sort's recursion is wasteful on tiny subarrays: two function calls, a buffer write and a
+copy-back per element. Insertion sort is cheap on small inputs. Set a threshold **S** — once a
+subarray is ≤ S elements, switch.
+Small diagram: a recursion tree whose bottom few levels are shaded and labelled "insertion
+sort", the upper levels labelled "merge".
+**Takeaway:** The question is not *whether* to switch, but *where*.
+
+### 3 — (a) The algorithm
+Pseudocode, language-neutral, with plain-English comments (indices inclusive both ends):
+
+```
+hybridSort(a, left, right, S):
+    if left >= right: return                    # 0 or 1 element, nothing to do
+    if right - left + 1 <= S:                   # subarray is small
+        insertionSort(a, left, right); return   #   -> switch to insertion sort
+    mid = left + (right - left) / 2             # integer division
+    hybridSort(a, left,  mid,   S)              # sort left half
+    hybridSort(a, mid+1, right, S)              # sort right half
+    merge(a, left, mid, right)                  # combine the two sorted halves
+```
+
+Call out in a side box: **S = 1 makes this exactly the original merge sort** — the base case
+only ever fires on single elements, where insertion sort does nothing. Every "S = 1" column in
+this study is therefore both a baseline and a self-check.
+**Takeaway:** One parameter, one extra branch — that is the entire modification.
+
+### 4 — What counts as a key comparison
+This has to be pinned down or none of the numbers mean anything.
+- **Merge:** exactly one key comparison per iteration of the main `while (i ≤ mid and j ≤ right)`
+  loop. The tail loops that copy the remainder of one run perform **none**.
+- **Insertion sort:** the test `a[j] > key` is counted every time it is evaluated — **including
+  the final failing one** that stops the scan. The bound test `j >= left` is an index test and
+  is not counted.
+- Index and bound tests are never key comparisons.
+**Takeaway:** That one failing comparison is exactly what produces the −H<sub>m</sub> term later —
+the convention is not cosmetic.
+
+### 5 — (a) Correctness evidence
+- `./hybrid_sort verify` sorts random arrays for **every n = 1…300** × **every S ∈ {1, 4, 7, 10,
+  13, 16, 19}** and asserts non-decreasing output. All pass.
+- Every experiment run re-checks sortedness before its result is recorded.
+- An independent **Java** implementation with the same generator reproduces the C comparison
+  counts **bit-for-bit** — a cross-check on the counting logic, not just the sorting.
+- `S = 1` reproduces the pure merge-sort counts to the comparison.
+- The whole suite was run on **two unrelated systems** (a 1-vCPU Ubuntu 24.04 VM with gcc 13.3, and
+  the machine in slide 6). **All 585 key-comparison values came out bit-for-bit identical.**
+**Takeaway:** Five independent checks, no failures.
+
+### 6 — (b) Experimental setup
+13 sizes from **1,000 to 10,000,000** · integers drawn uniformly from **[1, 10,000,000]** ·
+xorshift64\* generator with fixed seeds, so both algorithms see byte-identical input ·
+data generation and the sortedness check are **outside** the timed region · small inputs
+repeated up to **50×** and the times averaged.
+Machine: **Intel Core Ultra 7 265KF**, 31 GB RAM, Ubuntu 26.04 under WSL2, **gcc 15.2.0 -O2**,
+CPU time via `clock()` at microsecond resolution.
+**Takeaway:** Reproducible to the byte; timing measures sorting and nothing else.
+
+### 7 — Theory I: the two cost formulas
+Two boxed results, each with a one-line derivation sketch beside it.
+
+**Merging two random sorted runs of length p and q:**
+$$M(p,q) = p + q - \frac{p}{q+1} - \frac{q}{p+1}$$
+*Why:* the loop stops as soon as one run empties and the other's tail is copied free. For any
+element of A, the group {that element} ∪ B has q+1 members, and it is the largest with
+probability 1/(q+1) — so p/(q+1) elements of A are expected to be copied free.
+
+**Insertion sort on m random keys:**
+$$C_{\text{ins}}(m) = \frac{m(m+3)}{4} - H_m$$
+*Where H<sub>m</sub> comes from:* H<sub>m</sub> = 1 + ½ + ⅓ + … + 1/m is the **m-th harmonic
+number** (≈ ln m + 0.577; H₁₀ = 2.93, H₂₀ = 3.60, H₄₀ = 4.28). Inserting element i costs
+i/2 + 1 − 1/(i+1) on average: the "−1/(i+1)" is the case where the key is a **new minimum**, the
+scan runs off the left end, and the final *failing* comparison never happens. Summing those
+gives −H<sub>m</sub>.
+Worst case m(m−1)/2, best case m−1.
+**Takeaway:** H<sub>m</sub> is a small correction, not a mystery — it is the comparison that
+doesn't happen.
+
+### 8 — Theory II: where the 1.26 in *n* log₂*n* − 1.26*n* comes from
+Build it in two steps.
+1. A level of the tree merging runs of size s costs **n − n/(s+1)**, not n — slightly less,
+   because merges finish early.
+2. Summing over all log₂ n levels:
+$$C_{\text{ms}}(n) = n\log_2 n - n\sum_{j\ge1}\frac{1}{2^{\,j-1}+1}$$
+and that series converges fast:
+$$\tfrac12+\tfrac13+\tfrac15+\tfrac19+\tfrac1{17}+\tfrac1{33}+\dots = \mathbf{1.2645\ldots}$$
+Show the partial sums marching to 1.2645 (0.500 → 0.833 → 1.033 → 1.144 → 1.203 → 1.234 → …).
+Verified: at n = 2²⁰, (n log₂n − C_ms)/n = **1.26450**.
+Note that **more than half the constant (½ + ⅓ = 0.833) comes from the bottom two levels** —
+which is exactly the part the hybrid deletes. Flag this; it pays off on slide 14.
+**Takeaway:** 1.26 is a convergent series, not a fitted fudge factor.
+
+### 9 — Theory III: S is not what the algorithm feels
+The recursion halts after an **integer** number of halvings:
+$$k=\left\lceil\log_2\frac{n}{S}\right\rceil,\qquad m=\frac{n}{2^{k}}\in\left(\tfrac{S}{2},\,S\right]$$
+**m** — the *effective leaf size* — is what insertion sort actually receives, and it can be as
+small as **half** of S. Two consequences, both visible in the data later:
+1. Every S inside a plateau builds the **identical** recursion tree → identical comparison
+   count. The count only changes when S crosses ⌈n/2ᵏ⌉.
+2. With S fixed, **m oscillates as n grows.** At S = 16: m = 15.6 (n=10³), 9.8 (5·10³),
+   12.2 (10⁵), 15.3 (10⁶), 9.5 (10⁷).
+**Takeaway:** S is a knob with detents — the algorithm only sees ⌈log₂(n/S)⌉.
+
+### 10 — Theory IV: closed form, and which S minimises comparisons
+$$C(n,S)\;\approx\;\underbrace{n\log_2\tfrac{n}{m}-\tfrac{2n}{m}}_{\text{merging}}\;+\;\underbrace{\tfrac{n(m+3)}{4}-\tfrac{n H_m}{m}}_{\text{insertion at the leaves}}\;=\;\Theta\big(n\log(n/S)+nS\big)$$
+Θ(n log n) for constant S; degrades to Θ(n²) only when S = Θ(n). Accurate to better than **0.15 %**
+against the exact recurrence for S ≥ 8 — but **−4.4 %** at S = 1, so the optimum is settled on the
+exact recurrence, *not* on this formula. State that out loud; it is the methodological point of the
+section.
+
+Then the answer, in two steps. Present as two columns:
+
+| Step 1 — which leaf size m? | Step 2 — which S? |
+|---|---|
+| Exact recurrence at n = 2²⁰, exact integer H_m | S fixes depth k = ⌈log₂(n/S)⌉, which fixes m = n/2ᵏ |
+| m = 1: **18.7355** · m = 2: **18.7355** · m = 4: 18.7980 | Both maps are non-decreasing ⇒ cost is non-decreasing in S |
+| m = 8: 19.1791 · m = 16: 20.4187 · m = 32: 23.5619 | C(n,S+1) ≥ C(n,S) at **every** S = 1…511, **zero violations**, at five different n |
+| Cost never falls as m grows ⇒ **m = 1 wins** | ⇒ **argmin S = {1, 2, 3}**, an exact three-way tie |
+
+**Takeaway:** in key comparisons the best threshold is S ≤ 3 — and since S = 1 *is* pure merge sort,
+the comparison-optimal hybrid is the one that never calls insertion sort at all. Stress that no
+approximation was used anywhere in this argument: integers only.
+
+*If time allows*, one cross-check: the closed form is smooth in m, so differentiate it.
+f′(m) = −1/(m ln2) + 1/4 + (1+H_m)/m² stays positive for every m ≥ 1 — it comes down to **+0.08**
+near m ≈ 3.5 and turns back up — so f has no interior minimum, the same answer. Put
+`fig6b_slope_vs_leafsize.png` on the slide and let it carry the point: the curve never touches the
+zero line.
+
+### 11 — Base case: insertion sort never wins on comparisons
+Embed `fig5_base_case.png` on the right. Table on the left:
+
+| m | 1 | 2 | 3 | 4 | 5 | 10 | 20 | 40 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| C_ins(m) | 0 | 1 | 2.667 | 4.917 | 7.717 | 29.57 | 111.40 | 425.72 |
+| C_ms(m) | 0 | 1 | 2.667 | 4.667 | 7.167 | 22.67 | 63.52 | 165.13 |
+| difference | 0 | 0 | **0** | +0.25 | +0.55 | +6.90 | +47.89 | +260.59 |
+
+Insertion sort is **exactly tied** for m ≤ 3 and strictly worse from m = 4 — it is *never*
+cheaper. The dashed formula line sits on the measured points to within **0.12 %**, which
+validates both the derivation and the counting convention.
+**Takeaway:** No S can beat pure merge sort on comparisons — so any benefit must come from
+cost *per operation*. This one slide predicts the whole result.
+
+### 12 — (c)(i) Comparisons vs n, S fixed at 16
+Embed `fig1a_comparisons_vs_n.png` and `fig1b_comparisons_per_element.png` side by side.
+Compact table above or beside:
+
+| n | hybrid (S=16) | model | merge sort | model |
+|---:|---:|---:|---:|---:|
+| 1,000 | 10,342 | 10,324 | 8,700 | 8,707 |
+| 100,000 | 1,639,740 | 1,639,403 | 1,536,422 | 1,536,367 |
+| 10,000,000 | 226,416,986 | 226,417,506 | 220,102,645 | 220,100,699 |
+
+- Measured within **0.17 %** of the exact model at all 13 sizes; within **0.012 %** for n ≥ 10⁶.
+- Least-squares fit of the pure merge sort data: **C = 1.0032 n log₂n − 1.318 n** — recovering
+  the 1.2645 constant of slide 8.
+- **fig 1a** (log–log): straight lines of slope just above 1; the model line is invisible
+  under the measured points. A log–log plot alone cannot separate n log n from n^1.03 — hence
+  fig 1b.
+- **fig 1b** is the sharper test: dividing by n turns Θ(n log n) into a **straight line against
+  log₂n**. Red merge sort is straight and sits a constant ≈ 1.26 *below* the grey log₂n
+  reference — the constant, read straight off the plot.
+- Blue sits **above** red everywhere, and is **wavy, not straight** — that is m oscillating in
+  (8, 16]. Excess by size: **+18.9 %** (n=10³, m=15.6), +5.9 % (5·10³, m=9.8), +6.7 % (10⁵),
+  +8.3 % (10⁶), **+2.9 %** (10⁷, m=9.5).
+**Takeaway:** Θ(n log n) confirmed to 0.17 %, and at fixed S the hybrid does 3–19 % *more*
+comparisons — the wobble is the effective leaf size, not noise.
+
+### 13 — (c)(ii) Comparisons vs S, n fixed
+Embed `fig2a_comparisons_vs_S.png` and `fig2b_time_vs_S.png` side by side.
+
+| S (n = 10⁶) | 1 | 4 | 8 | 16 | 32 | 64 | 128 | 192 | 256 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| key comparisons (millions) | 18.67 | 18.73 | 19.07 | 20.23 | 23.18 | 29.89 | 44.22 | 44.22 | 73.83 |
+| ↳ as a ratio, ÷ the 18.67 M at S=1 | 1.000 | 1.003 | 1.021 | 1.083 | 1.241 | 1.600 | 2.368 | 2.368 | 3.953 |
+| CPU time (ms) | 64.6 | 60.8 | 58.2 | 57.3 | 56.7 | 55.6 | 54.4 | 53.8 | 57.5 |
+
+The second row is a **ratio**, not a count: at S=256 the algorithm does 73.83 *million*
+comparisons, which is 3.953 *times* the 18.67 million pure merge sort needs.
+
+- **fig 2a — a staircase, not a curve**, and the model overlays it (max deviation 0.19 % at
+  n=10⁵, 0.13 % at n=10⁶). Risers sit exactly at ⌈n/2ᵏ⌉: **S = 16, 31, 62, 123, 245** for
+  n = 10⁶; **13, 25, 49, 98, 196** for n = 10⁵. They come in *pairs* ({15,16}, {30,31}, …)
+  because 10⁶ is not a power of two, so subarrays at one depth differ in size by one.
+- Worth calling out: **S = 128 and S = 192 give the identical 44.22 M comparisons** at n = 10⁶ —
+  two thresholds 50 % apart, one identical algorithm.
+- Each riser roughly **doubles m**, and the insertion term doubles with it: at n = 10⁷ the
+  insertion component runs 14.8 M → 28.4 M → 53.3 M → 101.8 M → 197.6 M → 388.6 M for
+  S = 8, 16, 32, 64, 128, 256 (×1.9 per riser). Totals grow more slowly — +0.5 %, +2.9 %,
+  +10.1 %, +27.8 %, +66.9 %, +149.2 % — because each riser also removes a whole merge level ≈ n.
+- **fig 2b — CPU time behaves completely differently:** a steep drop to S ≈ 30, then a long
+  shallow floor, turning back up past S ≈ 200. Minima at **S = 66, 84, 141, 88, 142** for
+  n = 10³…10⁷ — an order of magnitude above the thresholds real implementations use.
+- **The hybrid's relative advantage shrinks as n grows** — visible only now that fig 2b covers five
+  sizes. Time at the best S, vs S=1: −34.4 % (10³), −26.1 % (10⁴), −17.8 % (10⁵), −17.4 % (10⁶),
+  −13.6 % (10⁷). The hybrid deletes a *fixed* number of merge levels while the tree has log₂n of
+  them, so the fraction removed falls as n rises.
+- The darkest-purple n=10³ curve moves in visible quantisation steps (one sort ≈ 21 µs); its shape
+  is meaningful, its points are not.
+**Takeaway:** The two figures disagree about what S should be — and that disagreement is the
+whole project.
+
+### 14 — (c)(iii) Choosing S
+Embed `fig3a_comparison_cost_vs_S.png` and `fig3b_time_vs_S_optimal.png` side by side. If any
+figure in the deck earns a full slide of its own, it is **fig 3b** — it carries the headline answer.
+
+Sweep runs to **S = 512**. Say why in one line: an earlier sweep stopped at 128 and found its
+"optimum" sitting on that boundary, which measures where the search stopped, not where the
+optimum is. The range was extended until the curve turned up on both sides.
+
+| n | best S by comparisons | best S by CPU | time at best vs S=1 | within 2 % of best |
+|---:|---:|---:|---:|---:|
+| 1,000 | 1–3 | 80 | −33 % | 80–224 |
+| 10,000 | 1–3 | 80 | −27 % | 80–128 |
+| 100,000 | 1–3 | 128 | −23 % | 112–192 |
+| 1,000,000 | 1–3 | 192 | −16 % | 64–224 |
+| 10,000,000 | 1–3 | 80 | −15 % | 80–224 |
+
+- **fig 3b** is a clear **U**: steep drop to S ≈ 10, long shallow floor, sharp rise past S ≈ 256.
+  The per-n optima (★) scatter across S = 80–192 with no meaningful single winner — and three of
+  the five sizes share S = 80, so their stars overlap (each curve's best S is in the legend).
+  **The shape is the result, not the star.**
+- Comparison flatness depends on n — the common claim "S = 1…8 is all equivalent" is true at
+  10⁷ but **not** at 10³. Within 0.5 % of the minimum: S = 1–3 (n=10³), 1–4, 1–5, 1–6, 1–8 (10⁷).
+- So pick the S that is never far from best at *any* size — worst-case time across all five:
+
+| S | 16 | 32 | 64 | 80 | 96 | 112 | **128** | 160 | 192 | 256 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| worst-case time vs best | +19.2 % | +9.6 % | +6.4 % | +3.8 % | +3.9 % | +0.9 % | **+0.6 %** | +3.2 % | +4.5 % | +18.2 % |
+| excess comparisons @ 10⁷ | +2.9 % | +10.1 % | +27.8 % | +66.9 % | +66.9 % | +66.9 % | **+66.9 %** | +149.2 % | +149.2 % | +149.2 % |
+
+**Recommendation: S ≈ 128** — within **0.6 %** of best time at every size tested. Note S = 80, 96
+and 128 build the *identical* tree at n = 10⁷ (m = 76.3), so they differ only by timing noise.
+Anything in **S ∈ [80, 192]** is defensible. **If comparisons carry weight, use S ≈ 64**: it gives
+up ~2.6 % of the time saving and more than halves the comparison penalty (+27.8 % vs +66.9 %).
+**Takeaway:** Two metrics, two different optima. Comparisons say S ≤ 3; CPU time says S ≈ 128 —
+an order of magnitude above the conventional answer.
+
+### 15 — (d) Head-to-head at n = 10,000,000
+Embed `fig4_part_d.png` left; table right. S = 128, medians of 5 trials.
+
+| | key comparisons | CPU time |
+|---|---:|---:|
+| Hybrid (S = 128) | 367,357,997 | 0.6687 s |
+| Original merge sort | 220,100,657 | 0.7785 s |
+| **Difference** | **+66.9 %** | **−14.1 %** (1.164× speed-up) |
+
+Both medians match the exact model to 5 significant figures. Spread is ~1 % on both algorithms
+with no outliers. Then show the trade across thresholds (`exp_d_thresholds.csv`), each row paired
+against its own merge-sort baseline:
+
+| S | comparisons | vs merge | time | vs merge | speed-up |
+|---:|---:|---:|---:|---:|---:|
+| 20 | 242,313,010 | +10.1 % | 0.6925 s | −10.5 % | 1.118× |
+| 32 | 242,313,010 | +10.1 % | 0.6921 s | −10.5 % | 1.118× |
+| 64 | 281,256,236 | +27.8 % | 0.6808 s | −11.9 % | 1.135× |
+| 96 | 367,357,997 | +66.9 % | 0.6715 s | −13.5 % | 1.157× |
+| **128** | **367,357,997** | **+66.9 %** | **0.6687 s** | **−14.1 %** | **1.164×** |
+
+Make the visual point that **the two bars lean opposite ways**: taller comparison bar, shorter
+time bar. And that across the table, **more comparisons buys more speed, monotonically.**
+**Takeaway:** The hybrid does two-thirds more comparisons and still finishes 14 % sooner.
+
+### 16 — (d) Why: the accounting
+The resolution of the paradox — a table with the mechanism spelled out.
+
+| at n = 10⁷ | pure merge sort | hybrid (S = 128) | change |
+|---|---:|---:|---:|
+| subarrays given to insertion sort | 10,000,000 (size 1) | **131,072** (size **76.29**) | — |
+| merge levels executed | 23.32 | 17.00 | −6.32 |
+| merge comparisons | 220,100,699 | 169,740,116 | **−50.4 M** |
+| insertion comparisons | 0 | 197,597,009 | **+197.6 M** |
+| **total comparisons** | **220,100,699** | **367,337,124** | **+147.2 M (+66.9 %)** |
+| recursive calls | 19,999,999 | 262,143 | **−19.7 M** |
+| element writes (buffer + copy back) | 466,445,568 | 340,000,000 | **−126.4 M** |
+
+Two bullets — the second is the real insight, give it weight:
+- **Comparisons lost:** cutting 6.32 merge levels saves 50.4 M but costs 197.6 M in insertion
+  sort. Worse, by slide 8 the deleted levels are the *cheapest* ones — over half the 1.26n
+  discount lives in the bottom two levels. The hybrid gives up merge sort's best-value work.
+- **Time won — because not all comparisons cost the same.** At n = 10⁷ the array is **40 MB**,
+  far beyond any cache, so every merge level is a streaming pass through **DRAM**: each
+  comparison drags a cache line with it. A leaf of 76 `int`s is **304 bytes** and lives entirely
+  in **L1**, so insertion sort's ~20 comparisons per element cost about a cycle each, in place,
+  with no scratch buffer and no copy-back. The trade is ~6.3 memory-bound merge levels for ~20
+  cache-resident comparisons per element — and it pays: 126 M fewer memory writes (27 % less
+  merge traffic) and a recursive-call count that collapses by a factor of **76**.
+If the design allows one diagram, draw the memory hierarchy: a 40 MB array streaming from DRAM
+per merge level, versus a 304-byte leaf sitting inside L1.
+**Takeaway:** The win is a constant factor — fewer passes over DRAM, fewer calls, comparisons paid
+out of L1 — not an asymptotic one. Both algorithms remain Θ(n log n).
+
+### 17 — Conclusions
+1. **Θ(n log(n/S) + nS)** comparisons; Θ(n log n) for constant S. The exact average-case model
+   matches every measurement to **0.17 %** (0.012 % for n ≥ 10⁶).
+2. Fixed S → n log n growth (fig 1); fixed n → a **staircase in S** with risers at ⌈n/2ᵏ⌉,
+   because S enters only through the integer depth ⌈log₂(n/S)⌉ (fig 2).
+3. **Comparisons are the wrong objective for tuning S** — insertion sort ties merge sort for
+   m ≤ 3 and loses from m = 4, so the count is minimised at S ≤ 3 and rises thereafter. The
+   corrected continuous analysis predicts exactly this.
+4. **CPU time is the right objective and its optimum is far above convention. S ≈ 128 recommended**
+   — within **0.6 %** of best at every size tested. S ≈ 64 if comparisons carry weight in the
+   cost model (+27.8 % rather than +66.9 %, for ~2.6 % more time).
+5. On 10 M integers the hybrid performs **66.9 % more comparisons** yet takes **14.1 % less CPU
+   time** — and the speed-up rises *monotonically* with the comparison count across
+   S = 20 → 128.
+6. **Comparison counts are hardware-independent; the optimal S is not.** The same suite on two
+   unrelated systems gave bit-for-bit identical counts, while the recommended threshold moved
+   from S ≈ 32 on a 1-vCPU cloud VM to S ≈ 128 here. Any claim of "the" optimal S is a claim
+   about a particular machine.
+
+### 18 — Why libraries still use 16–64
+Worth one slide — it pre-empts the obvious question and shows judgement. Timsort builds runs of
+32–64; libstdc++'s introsort switches at 16. Our measured optimum is 128. Not a contradiction:
+1. **Library sorts compare arbitrary types through a comparator.** Comparing two `int`s is one
+   instruction; a string compare or user lambda is far more. Once comparisons get expensive the
+   Θ(nS) term bites sooner and the optimum slides back to 16–32. We sort the cheapest possible key.
+2. **This merge is deliberately the plain one** — into a scratch buffer, then `memcpy` back, so
+   2n writes per level. A tuned sort ping-pongs between buffers and skips the copy-back, halving
+   the per-level cost and lowering the optimal S.
+3. **Libraries must be robust across input distributions**, not tuned to uniform random data.
+**Takeaway:** The optimal S is a function of comparison cost, merge implementation and memory
+hierarchy — this project fixes all three at one setting.
+
+### 19 — Limitations
+- **The optimal S is a property of the machine — demonstrated, not assumed.** The same suite on a
+  1-vCPU Ubuntu 24.04 VM (gcc 13.3) put the basin at S ≈ 32; on the Core Ultra 7 it sits at
+  S ≈ 128, a **4× shift**. Shape robust, centre not.
+- Uniformly random data only. On nearly-sorted input insertion sort goes near-linear and the
+  optimal S would be far larger — precisely the observation Timsort is built on.
+- Values drawn from [1, 10⁷] with n up to 10⁷, so the largest datasets contain many duplicates
+  while the model assumes distinct keys. Measured agreement (≤ 0.17 %) shows the effect is
+  negligible here.
+- Java is included to show the algorithm is not language-specific — its comparison counts match
+  C exactly, but its timings are JIT-dominated and are not used.
+
+## Optional backup slides (after the end, for Q&A)
+- **B1** — the exact recurrence and how `model.py` evaluates it by memoisation.
+- **B2** — the full 13-row measured-vs-model table from `exp_a.csv`.
+- **B3** — the refined S-sweep at n = 10⁷ (`exp_e.csv`, medians of 5), showing the U bracketed on
+  both sides:
+  S = 1, 16, 32, 64, 96, 128, 192, 256, 384 → times 0.7718, 0.7236, 0.7014, 0.6886, **0.6709**,
+  0.6743, 0.6796, 0.6807, 0.7213 s; comparisons 220.1 M, 226.4 M, 242.3 M, 281.2 M, 367.3 M,
+  367.3 M, 548.5 M, 548.5 M, 920.3 M.
+
+## Please avoid
+- Decorative stock photography, gradients-for-the-sake-of-it, or icon soup.
+- Restating a figure's axis labels as bullet points — annotate the figure instead.
+- Dense paragraphs. If a slide needs a paragraph, it needs to be two slides.
+- Any number not present in this brief or in `report.md`.

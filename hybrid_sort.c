@@ -26,7 +26,7 @@
 static long long comparisons = 0;
 
 /* ------------------------------------------------------------------ */
-/* Reproducible pseudo-random number generator (xorshift64*)           */
+/* Reproducible pseudo-random number generator (Marsaglia xorshift64)  */
 /* ------------------------------------------------------------------ */
 static unsigned long long rng_state = 88172645463325252ULL;
 
@@ -213,7 +213,7 @@ static void exp_c(int *a, int *buf) {
     const long long NS[] = {1000, 10000, 100000, 1000000, 10000000};
     /* Sweep must extend well past the optimum, or the "best S" reported is just
        the edge of the search range. On fast modern CPUs the CPU-time basin sits
-       far higher than the classic 16-64, so the range runs to 512.            */
+       far higher than the conventional 16-64, so the range runs to 512.       */
     const long long SVALS[] = {1,2,3,4,5,6,7,8,9,10,12,14,16,20,24,28,32,40,48,
                                64,80,96,112,128,160,192,224,256,320,384,448,512};
     const int NSV = sizeof(SVALS) / sizeof(SVALS[0]);
@@ -317,7 +317,7 @@ static void verify(int *a, int *buf) {
         }
         run_once(a, buf, n, 0, 0, &c, n);
     }
-    printf("verify: all hybrid (S=1..20) and merge sort runs for n=1..300 produced sorted output\n");
+    printf("verify: all hybrid (S=1,4,7,...,19) and merge sort runs for n=1..300 produced sorted output\n");
 }
 
 int main(int argc, char **argv) {
