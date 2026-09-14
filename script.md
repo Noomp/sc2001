@@ -61,37 +61,36 @@ is where the talk turns from "theory says don't hybridise" to "and yet it's fast
 
 > There are two costs to derive.
 >
-> First, merging. The loop stops as soon as one run empties, and the other run's tail gets copied for
+> In merging, the loop stops as soon as one run empties, and the other run's tail gets copied for
 > free. So merging two runs of length r costs about **2r minus 2**. That's two comparisons saved on
-> every merge, and the saving is **biggest at the bottom** of the tree. Add it up and you get **1.26**,
-> and the two lowest levels alone give you 0.83 of that. Hold onto that, because those are exactly the
-> levels the hybrid throws away.
+> every merge, and they are most significant on at the lowest levels. Add it up and you get about 
+> **1.26** comparisons saved, and the two lowest levels alone account for most of that. 
+> It's worth pointing out, because they are replaced in hybrid sort.
 >
-> Second, insertion sort. Every insert costs its shifts plus one failing test. Except when the key is a
-> new minimum, where the scan runs off the left end and that test never happens. One comparison saved
-> per step, and they add up to **H sub m**, which is tiny next to the quadratic.
+> Second, insertion sort. Every insert costs its shifts plus the failed test that stops the shifts. When there's a
+> new minimum, the scan terminates by an index check, not a comparison. One comparison saved
+> per step, and they add up to about **the m-th harmonic number**, which is tiny relative to the quadratic complexity.
 
 ### Slide 5 — Theory: the hybrid's cost, and why S is not the leaf size · 2:50 (85 s)
 
-> Now we put them together. This is the **exact** average-case recurrence, and every theory curve in
-> the deck comes from it.
+> Now we put them together. This is the **exact** average-case recurrence, and every theorical curve in
+> graphs follow it.
 >
 > The closed form needs one more thing, **m**, the size of the piece insertion sort actually gets. And
 > m is **not** S. Merge sort only ever halves, so starting from a thousand, the only sizes that exist
 > are 1000, 500, 250, 125, 63, 32, 16 and 8. There's no subarray of size 12, and no value of S can make
-> one. All S does is say stop when it's small enough, so m ends up between S over 2 and S.
+> one. All S does is say stop when it's small enough, so m ends up between half of S and S.
 >
-> You can see it in the table. S of 8 all the way up to 14 give **the same 9,136 comparisons**, because
-> they build the identical tree.
+> You can see it in the table. S of 8 all the way up to 14 give **the same number of comparisons**, because
+> they build the same tree.
 >
-> Cost never falls as m grows, and m never falls as S grows. We checked **every S from 1 to 511 across
-> five sizes**, and the count never decreases. The minimum is an exact tie at **S equals 1, 2 and 3**,
-> and S equals 1 is pure merge sort.
+> Comparisons never fall as m grows, and m never falls as S grows.  
+> The minimum is an exact tie at **S equals 1, 2 and 3**, and S equals 1 is pure merge sort.
 
 **Handoff at 4:15. This is the hinge, so pause before you swap.**
 
-> So if all you care about is comparisons, the best hybrid is the one that never calls insertion sort
-> at all. Sakthivel has the measurements.
+> So if all you care about are comparisons, theoretically, the best hybridsort isn't the hybridsort. It's pure mergesort.
+> Sakthivel has the measurements.
 
 ---
 
@@ -143,29 +142,29 @@ is where the talk turns from "theory says don't hybridise" to "and yet it's fast
 
 ### Slide 10 — (d) More comparisons, less time · 6:40 (40 s)
 
-> At ten million with S of 128, the hybrid does **66.9 per cent more** key comparisons. So is that a
-> bad threshold, or is it forced?
+> At n of ten million with S of 128, the hybrid does about **67 per cent more** comparisons than plain merge
+> sort, and yet it's the one we're recommending. So how can doing more comparisons make it faster?
 >
-> It's forced. We measured both algorithms directly on small arrays. Insertion sort **ties** merge sort
+> First, you can't avoid those extra comparisons by picking a different S. We measured both algorithms
+> directly on small arrays. Insertion sort **ties** merge sort
 > for m up to 3, and it's consistently worse from 4 onwards. It's never cheaper at any size in terms of comparisons.
 >
-> And yet on the same data the hybrid takes **14.1 per cent less** CPU time. That's a 1.16 times
-> speed-up, and across S from 20 up to 128 the speed-up rises **monotonically** with the comparison
-> count.
+> And yet on the same data, hybridsort takes about **14 per cent less** CPU time.  
+> Across S from 20 to 128, the more comparisons it does, the faster it gets.
 
 ### Slide 11 — (d) Why: the accounting · 7:20 (40 s)
 
-> So here's where it all goes. Cutting 6.3 merge levels saves us 50.4 million comparisons, but it costs
-> **197.6 million** in insertion sort. That's a net loss of 147 million. And going back to slide 4, the
-> levels we deleted were merge sort's **cheapest** ones.
+> So let's break it down. Cutting 6.3 merge levels saves us about 50 million merge comparisons, 
+> but it costs about **200 million** in insertion sort. That's four times more comparisons that what we removed. 
+> And going back to slide 4, the levels we deleted were merge sort's **cheapest** ones.
 >
 > So the win isn't in comparisons at all. It's that **comparisons are not equal**. At ten million the
 > array is **40 megabytes**, so every merge level streams through DRAM and every comparison drags a
-> cache line with it. A leaf of 76 integers is **304 bytes**, and that sits entirely in L1.
+> cache line with it. A leaf of 76 integers is **304 bytes**, and that sits entirely in L1 cache.
 
 **Handoff at 8:00:**
 
-> Swan's going to close.
+> I'll hand it off to Swan for the conclusion.
 
 ---
 
@@ -232,9 +231,9 @@ Sakthivel**, **code and method → Swan**. Each answer names the backup slide to
 > comparison counts, on the other hand, are hardware-independent. They came out identical on both
 > systems.
 
-**3. Why does the hybrid do more comparisons? Isn't that a bad threshold?** *(Zach → slide 10)*
-> It's forced, not a bad choice. Insertion sort ties merge sort for m up to 3 and loses from 4 onwards,
-> so it's never cheaper at any size. Every extra comparison is just the price of running insertion sort
+**3. Why does the hybrid do more comparisons? Did you just pick a bad value of S?** *(Zach → slide 10)*
+> No, you can't avoid them by picking a different S. Insertion sort ties merge sort for m up to 3 and
+> loses from 4 onwards, so it's never cheaper at any size. Every extra comparison is just the price of running insertion sort
 > at the bottom of the tree. The real question isn't whether the hybrid does more, it's whether the
 > comparisons it trades away were worth more than the ones it takes on.
 
