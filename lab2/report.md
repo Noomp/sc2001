@@ -14,7 +14,8 @@
 | `verify.txt` | Output of the correctness suite |
 | `fig1 … fig11 .png` | Figures for (a), (b) and (c) (11 files, one graph each) |
 | `small_directed_weighted_graph.png` | The small example graph used in the theory sections |
-| `extra_*.csv`, `extra1 … extra3 .png` | Data and figures for the **Extra information** section only (see the note below) |
+| `extra_*.csv`, `extra1 … extra5 .png` | Data and figures for the **Extra information** section only (see the note below) |
+| `across_languages.md`, `across_languages/` | The cross-language experiment behind E4: full method, tables, code in eight languages and raw data |
 
 Machine: Intel Core Ultra 7 265KF (20 cores, 30 MB L3), 31 GB RAM, Ubuntu 26.04 under WSL2,
 `gcc 15.2.0 -O2`. CPU time measured with `clock_gettime(CLOCK_PROCESS_CPUTIME_ID)` (nanosecond
@@ -45,8 +46,9 @@ once).
 > **About the Extra information section.** The project asks for exactly two implementations, and
 > every formal section, figure (fig1–fig11) and conclusion below uses only those two. Some
 > measurements of (a) and (b) can't be explained by those two alone. For those, the last section
-> of the report adds three extra variants, each kept to the one question it answers. Each formal
-> section points to the extra item that explains it.
+> of the report adds three extra variants, each kept to the one question it answers, and a
+> re-implementation of (a) and (b) in seven more languages. Each formal section points to the
+> extra item that explains it.
 
 ---
 
@@ -191,9 +193,17 @@ degree 8, 100 and 1,000). Each graph is run from vertex 0 and from 19 randomly c
 
 Every source reaches the whole graph, (a) does identical work from all of them, and (b)'s
 measurements from vertex 0 sit inside the range of the other 19. So the results from vertex 0
-stand for any source. The one exception is the sparsest end of the sweeps, a bare tree with
-$\lvert E\rvert=\lvert V\rvert-1$. Its edges all point away from vertex 0, so any other source
-reaches only its own subtree. That is exactly why the experiments use the tree's root.
+stand for any source. The exception is the sparsest end of the sweeps, from a bare tree
+($\lvert E\rvert=\lvert V\rvert-1$) up to about $\lvert E\rvert\approx2\lvert V\rvert$. There the
+tree's edges, which all point away from vertex 0, make up most of the graph, so a source other
+than vertex 0 may reach only part of it. That is exactly why the experiments use the tree's root.
+
+**Every measured graph is checked.** The driver aborts if any graph it times has a vertex that
+cannot be reached from vertex 0. A separate check regenerated all 86 experiment graphs from their
+seeds and searched outward from vertex 0: every vertex was reached in every graph. The stronger
+property, that every vertex can also reach every other (*strongly connected*), is not needed by
+Dijkstra. It holds for 51 of the 86 graphs and fails mainly on the sparsest ones, for the same
+reason as above.
 
 ### Random graphs
 
@@ -749,6 +759,9 @@ the two whose running time can be known from the graph's size alone.
   slowdown, the cache bend in fig 5, and the per-operation costs that decide the complete-graph
   result are all real measurements on this CPU and kernel. Their sizes would shift on other
   hardware. The operation counts would not.
+* **One language.** All formal results come from C. **Extra information E4** repeats (a) and (b)
+  in seven more languages, with the same logic and data layout. The pattern is the same in every
+  language; only the size of (b)'s lead changes.
 * **Timer resolution at the small end.** Runs under ~50 µs (the smallest sparse graphs with (b))
   are repeated many times per measurement, but still show a few microseconds of noise. No
   conclusion rests on those points.
@@ -761,9 +774,10 @@ the two whose running time can be known from the graph's size alone.
 
 ## Extra information
 
-Everything above uses only (a) and (b). This section answers three questions those two cannot
-answer alone, using three variants outside the brief. Each variant was timed on the **identical
-graphs** (same seeds) as the formal runs; the data is in `extra_*.csv`.
+Everything above uses only (a) and (b), written in C. This section answers four questions those
+two cannot answer alone. E1–E3 use three variants outside the brief, each timed on the
+**identical graphs** (same seeds) as the formal runs; the data is in `extra_*.csv`. E4 re-implements
+(a) and (b) themselves in seven more languages.
 
 | Variant (`dijkstra.c` name) | What it changes relative to (a) or (b) | Used in |
 |---|---|---|
@@ -865,3 +879,57 @@ replaces both ingredients at once. Changing them one at a time shows how much ea
   scan. Across `extra_vsV.csv` it beats (b) on every complete graph, by 1.1–2.1×, and it beats
   (a) by 1.9× at $\lvert V\rvert=10^4$. For complete graphs with typical weights, a hybrid of the
   two implementations is better than either.
+
+### E4. Does the language matter? — supplements §(c)
+
+Every result above comes from C. A teammate's Python notebook found the opposite at the dense end:
+(a) clearly faster at 50–90 % density. To separate the effect of the language from the effect of
+how the code is written, (a) and (b) were re-implemented in seven more languages: C++, Rust, Go,
+Java, C#, JavaScript and Python.
+
+* **Same logic and data layout everywhere.** Every version stores the graph in flat typed arrays
+  (Python through its `array` module) and uses the same loops, tests and tie-breaking.
+* **Equivalence checked, not assumed.** Each version reports its distance sum, its number of
+  successful relaxations and a hash of the order it finished vertices in. All 414 measurements
+  matched C's values exactly.
+* **Same inputs and timing.** Every language read the same graph files and used the same timing
+  rule.
+
+The full method, all tables and the limitations are in
+[`across_languages.md`](across_languages.md).
+
+![extra4](extra4_languages_vs_V.png)
+
+**Varying \|V\|** (sparse graphs, $\lvert E\rvert=8\lvert V\rvert$). (b) is faster in all eight
+languages at every size, and its lead grows with $\lvert V\rvert$ in every language, as the
+asymptotics predict. In C it goes from 21× at $\lvert V\rvert=250$ to 239× at 16,000. The lines
+converge as $\lvert V\rvert$ grows, because the $\lvert V\rvert^2$ against
+$\lvert V\rvert\log\lvert V\rvert$ gap outweighs each language's constant factors. Most compiled
+languages show a dip at $\lvert V\rvert=1{,}000$, which the data doesn't explain. JavaScript and
+Python stop at 8,000 because the sweep was stopped there.
+
+![extra5](extra5_languages_vs_E.png)
+
+**Varying \|E\|** ($\lvert V\rvert=4{,}000$, from $\lvert E\rvert=8\lvert V\rvert$ to complete).
+Every language follows the same shape as the C results in §(c):
+
+* (b) is far ahead on sparse graphs.
+* Its lead shrinks as density rises.
+* The two are roughly tied on the complete graph: ratios 0.80–1.43.
+* (a) is faster only on the adversarial graph (hollow markers): ratios 0.04–0.24.
+
+The language sets *how far* (b) is ahead, not *whether* it is. At 50 % density (b) is 9.4–11.6×
+faster in C, C++ and Rust, 6.1–7.4× in Go, Java, C# and JavaScript, and 2.5× in Python. Python's
+lead is smallest because interpreter overhead is added to each of (b)'s heap operations, which
+costs it more than it costs (a)'s simple array scans.
+
+**What this means for the teammate's result.** Python with flat arrays agrees with every other
+language: (b) is faster at all random densities, including 90 % and complete graphs. His
+notebook stores the graph in Python lists of individual number objects, with weights from 1 to
+100 and edge tuples created in shuffled order. A separate scratch test traced most of his (a)
+advantage to those layout choices. So the disagreement comes from the implementation, not from
+Python or the algorithms.
+
+**Caveats:** one repeat, so ratios within about ±25 % of 1 are ties. Coverage is $\lvert V\rvert$
+up to 8,000, plus one sparse point at 16,000 for six languages. Each language was built only at
+its standard release setting.

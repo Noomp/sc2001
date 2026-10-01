@@ -6,6 +6,8 @@ It reads the CSVs from, and writes the PNGs to, the directory this file lives in
 fig1 ... fig11    the formal figures: implementations (a) and (b) only   (exp_*.csv)
 extra1 ... extra3 supporting figures for the report's "Extra information"
                   section, using variants outside the brief              (extra_*.csv)
+extra4, extra5    (a) and (b) re-implemented in eight languages
+                                                  (across_languages/results_x.csv)
 """
 import csv, math, os
 import matplotlib
@@ -238,3 +240,46 @@ ax.set_xlabel("|E|   (|V| = 10,000)"); ax.set_ylabel("CPU time (s)")
 ax.set_title("Extra 3: changing only the representation, or only the queue")
 ax.legend(frameon=False)
 save(fig, "extra3_c_one_change_at_a_time.png")
+
+# ------------------------------------------------- extra: the same algorithms in 8 languages
+XL = list(csv.DictReader(open(os.path.join(HERE, "across_languages", "results_x.csv"))))
+XL = [r for r in XL if r["check"] == "ok" and r["ta_ms"] != "NA" and r["tb_ms"] != "NA"]
+LANGS = ["C", "C++", "Rust", "Go", "Java", "C#", "JavaScript", "Python"]
+LCOL = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#4a3aa7", "#e34948"]
+LMARK = ["o", "s", "^", "D", "v", "P", "X", "*"]
+
+
+def xratio(lang, V=None, label=None):
+    """median time(a)/time(b) per (V, label) for one language, sorted by V then E"""
+    cells = {}
+    for r in XL:
+        if r["lang"] == lang and (V is None or int(r["V"]) == V) and (label is None or r["label"] == label):
+            cells.setdefault((int(r["V"]), int(r["E"]), r["label"]), []).append(
+                float(r["ta_ms"]) / float(r["tb_ms"]))
+    return [(k, sorted(v)[len(v) // 2]) for k, v in sorted(cells.items())]
+
+
+fig, ax = plt.subplots(figsize=(6.4, 4.6))
+for lang, c, m in zip(LANGS, LCOL, LMARK):
+    pts = xratio(lang, label="8V")
+    ax.plot([k[0] for k, _ in pts], [y for _, y in pts], color=c, marker=m, ms=5, lw=LW, label=lang)
+ax.set_xscale("log", base=2); ax.set_yscale("log")
+ax.set_xlabel("|V|   (|E| = 8|V|)"); ax.set_ylabel("time(a) / time(b)   (above 1: (b) faster)")
+ax.set_title("Extra 4: (a) vs (b) in eight languages, varying |V|")
+ax.legend(frameon=False, fontsize=7.5, ncol=2, loc="upper left")
+save(fig, "extra4_languages_vs_V.png")
+
+fig, ax = plt.subplots(figsize=(6.4, 4.6))
+for lang, c, m in zip(LANGS, LCOL, LMARK):
+    pts = [(k, y) for k, y in xratio(lang, V=4000) if k[2] != "adv"]
+    ax.plot([k[1] for k, _ in pts], [y for _, y in pts], color=c, marker=m, ms=5, lw=LW, label=lang)
+    adv = [(k, y) for k, y in xratio(lang, V=4000) if k[2] == "adv"]
+    ax.plot([k[1] for k, _ in adv], [y for _, y in adv], color=c, marker=m, ms=7, lw=0,
+            markerfacecolor="none", markeredgewidth=1.3)
+ax.plot([], [], color="grey", marker="o", ms=7, lw=0, markerfacecolor="none", label="hollow: adversarial graph")
+ax.axhline(1, color="k", lw=LWR)
+ax.set_xscale("log"); ax.set_yscale("log")
+ax.set_xlabel("|E|   (|V| = 4,000, from |E| = 8|V| to complete)"); ax.set_ylabel("time(a) / time(b)   (above 1: (b) faster)")
+ax.set_title("Extra 5: (a) vs (b) in eight languages, varying |E|")
+ax.legend(frameon=False, fontsize=7.5, ncol=2, loc="lower left")
+save(fig, "extra5_languages_vs_E.png")

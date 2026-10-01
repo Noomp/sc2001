@@ -403,6 +403,12 @@ static void run_point(const char *mode, const char *label, int V, Edge *ed, ll E
     free(ed);
     Cnt c; dij_list_heap(g, 0, &c);
     ll *ref = malloc(sizeof(ll) * V); memcpy(ref, g->d, sizeof(ll) * V);
+    /* every measured graph must have every vertex reachable from the source (vertex 0) */
+    for (int v = 0; v < V; v++)
+        if (ref[v] >= INF) {
+            fprintf(stderr, "UNREACHABLE vertex %d in %s %s V=%d E=%lld\n", v, mode, label, V, E);
+            exit(1);
+        }
     for (int a = 0; a < NALG; a++) {
         if (!(mask >> a & 1)) continue;
         if (ALG[a].needM && !g->M) continue;
