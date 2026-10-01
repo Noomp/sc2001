@@ -3,4 +3,5 @@ __pycache__
 *.pyc
 *.zip
 *.pptx
+*.bak
 slides_prompt.md
