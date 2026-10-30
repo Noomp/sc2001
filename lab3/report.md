@@ -36,19 +36,37 @@ The graph has no cycles, because every edge strictly decreases the capacity. Tha
 ```
 MaxProfit(C, w[0..n-1], p[0..n-1]):
     P[0..C] ← 0
-    for c ← 1 to C:
-        for i ← 0 to n-1:
-            if w[i] ≤ c and P[c − w[i]] + p[i] > P[c]:
+    for i ← 0 to n-1:
+        for c ← w[i] to C:
+            if P[c − w[i]] + p[i] > P[c]:
                 P[c] ← P[c − w[i]] + p[i]
     return P[C]
 ```
 
-**Explanation:** This algorithm fills the table in the order the graph requires. When it computes P[c], every P[c − wᵢ] is already done, because c − wᵢ < c. Each table entry is the recurrence from (1) evaluated exactly once. Starting P[c] at 0 handles the "nothing fits" case.
+**Explanation:** The algorithm brings in one object type at a time. Let $P_i(c)$ be the maximum profit for capacity $c$ using only types $0, \dots, i$, with $P_{-1}(c) = 0$ because no types are allowed yet. An optimal packing either has no type-$i$ object, or it has at least one. If it has one, removing it leaves capacity $c - w_i$, which must be packed optimally from types $0, \dots, i$, and type $i$ is still allowed because supply is unlimited. This gives
 
-- **Time:** O(nC), because the algorithm fills C entries and each one checks n types.
-- **Space:** O(C), for the one-dimensional table.
+$$
+P_i(c) =
+\begin{cases}
+P_{i-1}(c) & \text{if } w_i > c \\
+\max\bigl( P_{i-1}(c),\ P_i(c - w_i) + p_i \bigr) & \text{otherwise}
+\end{cases}
+$$
 
-A one-dimensional table is enough because of the unlimited supply: a subproblem is described by its capacity alone. In 0/1 knapsack, where each object can be used only once, a subproblem must also record which objects are still available, $P(i, c)$, which makes the subproblem space two-dimensional.
+After the last pass, $P_{n-1}(c) = P(c)$, the same value the recurrence in (1) defines.
+
+The algorithm keeps a single array instead of a 2D table of $P_i(c)$. Pass $i$ overwrites row $i-1$ in place, and the update stays correct because of the order in which $c$ is visited:
+
+- When pass $i$ reaches $P[c]$, that entry hasn't been touched yet in this pass, so it still holds $P_{i-1}(c)$.
+- $P[c - w_i]$ is at a smaller capacity, so it was already updated in this pass and holds $P_i(c - w_i)$. This is what lets type $i$ be used more than once.
+- Entries with $c < w_i$ are skipped, so they keep $P_{i-1}(c)$, which matches the first case.
+
+Starting every entry at 0 gives the base case $P_{-1}(c) = 0$.
+
+- **Time:** O(nC). There are $n$ passes, and each pass visits at most $C$ entries.
+- **Space:** O(C), for the one-dimensional array.
+
+The direction of the inner loop is what makes this unbounded knapsack. In 0/1 knapsack each object can be used at most once, and the same algorithm works if $c$ runs downward from $C$ to $w_i$. Then $P[c - w_i]$ hasn't been updated yet and still holds $P_{i-1}(c - w_i)$, which means type $i$ has not been used.
 
 ## (4) Code and results
 

@@ -3,9 +3,9 @@ def max_profit(C, w, p):
     n = len(w)
     P = [0] * (C + 1)          # P[c] = max profit with capacity c
     choice = [-1] * (C + 1)    # last item type added to reach P[c]
-    for c in range(1, C + 1):
-        for i in range(n):
-            if w[i] <= c and P[c - w[i]] + p[i] > P[c]:
+    for i in range(n):
+        for c in range(w[i], C + 1):
+            if P[c - w[i]] + p[i] > P[c]:
                 P[c] = P[c - w[i]] + p[i]
                 choice[c] = i
     return P, choice
